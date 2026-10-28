@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "bunkr-download",
+  "version": "0.0.0",
+  "description": "Preview Bunkr albums, pick files and download them into a folder you choose.",
+  "minimum_chrome_version": "122",
+  "permissions": ["storage", "contextMenus", "clipboardRead", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": ["https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Open bunkr-download" }
+}

@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="acid">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self';"
+    />
+    <title>bunkr-download</title>
+    <script src="theme-boot.js"></script>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+      <symbol id="i-grid-dense" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="4.5" height="4.5" rx="1"/><rect x="9.75" y="3.5" width="4.5" height="4.5" rx="1"/><rect x="16" y="3.5" width="4.5" height="4.5" rx="1"/><rect x="3.5" y="9.75" width="4.5" height="4.5" rx="1"/><rect x="9.75" y="9.75" width="4.5" height="4.5" rx="1"/><rect x="16" y="9.75" width="4.5" height="4.5" rx="1"/><rect x="3.5" y="16" width="4.5" height="4.5" rx="1"/><rect x="9.75" y="16" width="4.5" height="4.5" rx="1"/><rect x="16" y="16" width="4.5" height="4.5" rx="1"/></symbol>
+      <symbol id="i-queue" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h9"/><path d="M17 15l4 3-4 3z" fill="currentColor"/></symbol>
+      <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1z"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+      <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M3.5 17.5v-10a2 2 0 0 1 2-2h4l2 2h5.5a2 2 0 0 1 2 2V11"/><path d="M5.5 19.5h11.6a1.5 1.5 0 0 0 1.42-1.02l2-6A1 1 0 0 0 19.57 11H7.6a1.5 1.5 0 0 0-1.4.97L3.5 17.5a2 2 0 0 0 2 2z"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+      <symbol id="i-clear" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4.5h4.5"/></symbol>
+      <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 4v4.5h-4.5"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-8.5 8.5"/></symbol>
+      <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M10 9.5v5l4-2.5z"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/></symbol>
+      <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+      <symbol id="i-disk" viewBox="0 0 24 24"><rect x="3.5" y="13" width="17" height="6.5" rx="2"/><path d="M5.5 13l2-7.5h9l2 7.5"/><path d="M16.5 16.25h.01"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5l7.5 3v5.5c0 4.5-3.2 7.6-7.5 8.5-4.3-.9-7.5-4-7.5-8.5V6.5z"/><path d="M9 12l2 2 4-4"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5"/></symbol>
+      <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M4 7h3.5l9 10H20M4 17h3.5l2.5-2.8M13.5 9.8L16.5 7H20M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z"/></symbol>
+      <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 3.5L5.5 13.5H12l-1 7 7.5-10H12z"/></symbol>
+      <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9 5V3.5h6V5"/><path d="M9 11h6M9 15h4"/></symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+      <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M3 12c.5-1.5 4-6 9-6s8.5 4.5 9 6c-.5 1.5-4 6-9 6s-8.5-4.5-9-6z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M4 4l16 16"/><path d="M10.6 6.1A9.7 9.7 0 0 1 12 6c5 0 8.5 4.5 9 6-.3.8-1.2 2.3-2.6 3.6M6.6 7.6C4.6 9 3.3 11 3 12c.5 1.5 4 6 9 6 1.5 0 2.9-.4 4.1-1"/><path d="M9.9 10a3 3 0 0 0 4.2 4.1"/></symbol>
+    </svg>
+
+    <div class="app">
+      <!-- ============ Sidebar ============ -->
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><svg class="i"><use href="#i-download" /></svg></span>
+          <span class="brand-name">bunkr<span class="brand-dim">/dl</span></span>
+        </div>
+
+        <nav class="nav" aria-label="Sections">
+          <button id="navAlbum" class="nav-item active" type="button" data-view="album" title="Album">
+            <svg class="i"><use href="#i-grid" /></svg><span class="nav-label">Album</span>
+          </button>
+          <button id="navSearch" class="nav-item" type="button" data-view="search" title="Search albums (Ctrl+K)">
+            <svg class="i"><use href="#i-search" /></svg><span class="nav-label">Search</span>
+          </button>
+          <button id="queueBtn" class="nav-item" type="button" data-view="queue" title="Queue">
+            <svg class="i"><use href="#i-queue" /></svg><span class="nav-label">Queue</span>
+            <span id="queueCount" class="badge badge-accent" hidden>0</span>
+          </button>
+          <button id="bookmarksBtn" class="nav-item" type="button" data-view="saved" title="Saved albums">
+            <svg class="i"><use href="#i-bookmark" /></svg><span class="nav-label">Saved</span>
+            <span id="bmCount" class="badge" hidden>0</span>
+          </button>
+          <button id="navSettings" class="nav-item" type="button" data-view="settings" title="Settings">
+            <svg class="i"><use href="#i-settings" /></svg><span class="nav-label">Settings</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+
+        <button id="activity" class="activity" type="button" title="Show download progress" hidden>
+          <span class="activity-head">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <span id="activityLabel" class="activity-label">Downloading</span>
+          </span>
+          <span class="bar bar-xs"><span id="activityFill" class="fill"></span></span>
+          <span class="activity-meta">
+            <span id="activityCount" class="num"></span>
+            <span id="activitySpeed" class="num"></span>
+          </span>
+        </button>
+
+        <div class="theme-switch" role="radiogroup" aria-label="Color theme">
+          <button type="button" class="theme-dot" data-theme-set="acid" role="radio" aria-checked="true" title="Acid Lime">
+            <span class="swatch swatch-acid"></span>
+          </button>
+          <button type="button" class="theme-dot" data-theme-set="lavender" role="radio" aria-checked="false" title="Midnight Lavender">
+            <span class="swatch swatch-lavender"></span>
+          </button>
+          <span id="themeName" class="theme-name">Acid Lime</span>
+          <button id="discreetBtn" type="button" class="discreet-btn" aria-pressed="false" title="Discreet view (Ctrl+Shift+H)" aria-label="Discreet view">
+            <svg class="i"><use href="#i-eye" /></svg>
+          </button>
+        </div>
+      </aside>
+
+      <!-- ============ Main column ============ -->
+      <div class="main">
+        <header class="titlebar">
+          <div class="command">
+            <svg class="i command-icon"><use href="#i-link" /></svg>
+            <input
+              id="albumUrl"
+              type="text"
+              placeholder="Paste a bunkr album link — or type an album name to search"
+              spellcheck="false"
+              autocomplete="off"
+            />
+            <kbd class="command-kbd" aria-hidden="true">Enter</kbd>
+            <button id="loadBtn" class="btn btn-primary btn-sm" type="button">Load album</button>
+          </div>
+        </header>
+
+        <!-- ============ Album view ============ -->
+        <section id="viewAlbum" class="view" data-view="album">
+          <div id="albumScroller" class="scroller">
+            <section id="emptyState" class="empty">
+              <div class="hero">
+                <div class="eyebrow">Bunkr media downloader</div>
+                <h1 class="hero-title">Paste an album link.<br /><span class="hero-dim">Pick what you need. Download.</span></h1>
+                <p class="hero-sub">
+                  Every file is previewed with thumbnails and exact sizes before anything is saved. Files already on
+                  your disk are recognised locally, and albums can be queued back-to-back.
+                </p>
+                <div class="hero-actions">
+                  <button id="heroPasteBtn" class="btn btn-primary btn-lg" type="button">
+                    <svg class="i"><use href="#i-clipboard" /></svg>Paste link &amp; load
+                  </button>
+                  <button id="heroSearchBtn" class="btn btn-lg" type="button">
+                    <svg class="i"><use href="#i-search" /></svg>Search albums
+                  </button>
+                  <span class="kbd-hint"><kbd>Ctrl</kbd><kbd>L</kbd> focus link field</span>
+                </div>
+
+                <div class="features">
+                  <div class="feature">
+                    <svg class="i"><use href="#i-image" /></svg>
+                    <div><strong>Preview first</strong><span>Thumbnails, names and sizes for every file</span></div>
+                  </div>
+                  <div class="feature">
+                    <svg class="i"><use href="#i-disk" /></svg>
+                    <div><strong>Disk-aware</strong><span>Skips complete files, re-fetches broken ones — checked locally</span></div>
+                  </div>
+                  <div class="feature">
+                    <svg class="i"><use href="#i-queue" /></svg>
+                    <div><strong>Queue albums</strong><span>Line up several albums and walk away</span></div>
+                  </div>
+                </div>
+
+                <div id="recentWrap" class="recent" hidden>
+                  <div class="section-label">
+                    <span>Saved albums</span>
+                    <button id="recentAllBtn" class="link-btn" type="button">View all</button>
+                  </div>
+                  <div id="recentList" class="recent-list"></div>
+                </div>
+              </div>
+            </section>
+
+            <section id="previewSection" hidden>
+              <div class="album-head">
+                <div class="album-head-main">
+                  <div class="eyebrow">Album</div>
+                  <h1 id="albumTitle" class="album-title">Loading album…</h1>
+                  <div class="album-sub">
+                    <span id="albumStats" class="album-stats num"></span>
+                    <span id="albumMeta" class="album-meta"></span>
+                    <span id="previewProgress" class="album-meta"></span>
+                  </div>
+                </div>
+                <div class="album-head-actions">
+                  <button id="saveAlbumBtn" class="btn btn-ghost btn-sm" type="button" title="Save this album for later" hidden>
+                    <svg class="i"><use href="#i-star" /></svg>Save
+                  </button>
+                  <button id="resetBtn" class="btn btn-ghost btn-sm" type="button" title="Clear the current album and return to the start screen">
+                    <svg class="i"><use href="#i-clear" /></svg>Clear
+                  </button>
+                </div>
+                <div id="loadBar" class="load-bar" hidden><span id="loadFill" class="fill"></span></div>
+              </div>
+
+              <div class="toolbar">
+                <div class="toolbar-row">
+                  <label class="select-all" title="Select all visible files (Ctrl+A)">
+                    <input type="checkbox" id="selectAll" class="sr-only" />
+                    <span class="cbox" aria-hidden="true"><svg class="i"><use href="#i-check" /></svg><span class="cbox-dash"></span></span>
+                    <span id="selectedCount" class="num">0 / 0 selected</span>
+                  </label>
+
+                  <div id="typeFilter" class="seg" role="radiogroup" aria-label="File type">
+                    <button type="button" class="seg-btn active" data-type="all" role="radio" aria-checked="true">All <span class="seg-count num" data-count="all"></span></button>
+                    <button type="button" class="seg-btn" data-type="image" role="radio" aria-checked="false"><svg class="i"><use href="#i-image" /></svg>Images <span class="seg-count num" data-count="image"></span></button>
+                    <button type="button" class="seg-btn" data-type="video" role="radio" aria-checked="false"><svg class="i"><use href="#i-film" /></svg>Videos <span class="seg-count num" data-count="video"></span></button>
+                    <button type="button" class="seg-btn" data-type="other" role="radio" aria-checked="false"><svg class="i"><use href="#i-file" /></svg>Other <span class="seg-count num" data-count="other"></span></button>
+                  </div>
+
+                  <label class="search">
+                    <svg class="i"><use href="#i-search" /></svg>
+                    <input id="searchInput" class="veil-text" type="text" placeholder="Filter by name" spellcheck="false" autocomplete="off" />
+                    <button id="searchClear" class="search-clear" type="button" title="Clear filter" hidden><svg class="i"><use href="#i-x" /></svg></button>
+                  </label>
+
+                  <div class="toolbar-spacer"></div>
+
+                  <label class="select-wrap" title="Sort order">
+                    <select id="sortSelect">
+                      <option value="album">Album order</option>
+                      <option value="name">Name</option>
+                      <option value="size-desc">Largest first</option>
+                      <option value="size-asc">Smallest first</option>
+                      <option value="type">Type</option>
+                    </select>
+                  </label>
+
+                  <div id="densitySeg" class="seg seg-icons" role="radiogroup" aria-label="Thumbnail size">
+                    <button type="button" class="seg-btn" data-density="compact" role="radio" title="Small thumbnails"><svg class="i"><use href="#i-grid-dense" /></svg></button>
+                    <button type="button" class="seg-btn active" data-density="comfortable" role="radio" title="Large thumbnails"><svg class="i"><use href="#i-grid" /></svg></button>
+                  </div>
+                </div>
+
+                <div class="toolbar-row toolbar-row-sub">
+                  <label class="switch" title="Scan the album folder on disk only. Never uploads names, hashes, or content. Skips complete files; re-downloads empty or corrupt ones.">
+                    <input type="checkbox" id="skipExisting" />
+                    <span class="switch-track" aria-hidden="true"></span>
+                    <span class="switch-label"><svg class="i"><use href="#i-disk" /></svg>Check disk</span>
+                  </label>
+                  <label class="switch" id="hideDownloadedOpt" title="Enable Check disk and choose an output folder first">
+                    <input type="checkbox" id="hideDownloaded" disabled />
+                    <span class="switch-track" aria-hidden="true"></span>
+                    <span class="switch-label"><svg class="i"><use href="#i-eye-off" /></svg>Hide on disk</span>
+                  </label>
+                  <span id="localScanStatus" class="scan-status"></span>
+                  <div class="adv-filters" role="group" aria-label="Extension and size filters">
+                    <input id="extFilter" class="adv-input" type="text" placeholder="Ext: jpg, mp4" title="Show only these extensions, comma separated" spellcheck="false" autocomplete="off" />
+                    <input id="minSizeFilter" class="adv-input adv-size" type="text" placeholder="Min size" title="Hide files smaller than this, e.g. 500k or 2M. Files of unknown size stay visible." spellcheck="false" autocomplete="off" />
+                    <input id="maxSizeFilter" class="adv-input adv-size" type="text" placeholder="Max size" title="Hide files larger than this, e.g. 1.5G. Files of unknown size stay visible." spellcheck="false" autocomplete="off" />
+                  </div>
+                  <button id="selectMissingBtn" type="button" class="btn btn-sm btn-quiet" title="Select only missing or broken local files" hidden>
+                    Select missing / broken
+                  </button>
+                  <button id="selectMismatchBtn" type="button" class="btn btn-sm btn-quiet btn-warn" title="Select only files with a local size mismatch" hidden>
+                    Select mismatches
+                  </button>
+                  <div class="toolbar-spacer"></div>
+                  <span id="filteredCount" class="filter-note num" aria-live="polite" hidden></span>
+                </div>
+              </div>
+
+              <div id="grid" class="grid" data-density="comfortable"></div>
+              <div id="filteredEmpty" class="grid-empty" role="status" hidden>
+                <p id="filteredEmptyText">All files are already on disk. Turn off Hide on disk to show the full album.</p>
+                <button id="resetFiltersBtn" class="btn btn-sm" type="button">Reset filters</button>
+              </div>
+            </section>
+          </div>
+
+          <!-- Dock: destination, parallelism, primary action, progress -->
+          <section id="bottomBar" class="dock" hidden>
+            <div id="progressSection" class="dock-progress" hidden>
+              <div class="dp-head">
+                <span id="totalLabel" class="dp-count num">0 / 0</span>
+                <span id="dpBytes" class="dp-stat num"></span>
+                <span id="dpSpeed" class="dp-stat dp-speed num"></span>
+                <span id="dpEta" class="dp-stat num"></span>
+                <div class="toolbar-spacer"></div>
+                <button id="stopBtn" class="btn btn-sm btn-warn" type="button" hidden title="Stop downloading. Partial files are kept and resume the next time you download them.">Stop</button>
+                <button id="toggleDetailsBtn" class="btn btn-sm btn-quiet" type="button" aria-expanded="false">Per-file</button>
+              </div>
+              <div id="totalBar" class="bar"><div id="totalFill" class="fill"></div></div>
+              <div id="fileProgress" class="file-progress" hidden></div>
+            </div>
+
+            <div id="queueRunStatus" class="queue-run-status" hidden>
+              <span class="pulse-dot" aria-hidden="true"></span>
+              <span id="queueRunLabel"></span>
+            </div>
+
+            <div class="dock-row">
+              <button id="browseBtn" class="path-chip" type="button" title="Choose the download folder">
+                <svg class="i"><use href="#i-folder" /></svg>
+                <span class="path-chip-text">
+                  <span class="path-chip-label">Save to</span>
+                  <span id="outputDir" class="path-chip-value empty">Choose a folder…</span>
+                </span>
+              </button>
+              <button id="openFolderBtn" class="btn btn-quiet btn-lg" type="button" data-desktop-only hidden title="Open this album’s folder in the file manager">
+                <svg class="i"><use href="#i-folder-open" /></svg>Open folder
+              </button>
+
+              <div class="stepper" title="Parallel downloads (1–16)">
+                <span class="stepper-label"><svg class="i"><use href="#i-zap" /></svg>Parallel</span>
+                <button id="concDown" class="stepper-btn" type="button" aria-label="Fewer parallel downloads"><svg class="i"><use href="#i-minus" /></svg></button>
+                <input id="concurrency" class="num" type="number" min="1" max="16" value="4" />
+                <button id="concUp" class="stepper-btn" type="button" aria-label="More parallel downloads"><svg class="i"><use href="#i-plus" /></svg></button>
+              </div>
+
+              <span id="summary" class="dock-summary"></span>
+
+              <div class="dock-actions">
+                <button id="retryFailedBtn" class="btn" type="button" hidden title="Download the files that failed in the last run again">
+                  <svg class="i"><use href="#i-retry" /></svg>Retry failed <span id="retryFailedCount" class="btn-meta num"></span>
+                </button>
+                <button id="queueAddBtn" class="btn" type="button" disabled title="Add this album (selected files) to the download queue">
+                  <svg class="i"><use href="#i-queue" /></svg>Add to queue
+                </button>
+                <button id="downloadBtn" class="btn btn-primary btn-lg" type="button" disabled>
+                  <svg class="i"><use href="#i-download" /></svg>
+                  <span id="downloadLabel">Download</span>
+                  <span id="downloadMeta" class="btn-meta num"></span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ============ Search view ============ -->
+        <section id="searchPanel" class="view" data-view="search" hidden>
+          <div id="srScroller" class="scroller">
+            <div class="page page-wide">
+              <header class="page-head">
+                <div>
+                  <div class="eyebrow">Album search</div>
+                  <h1 class="page-title">Find albums</h1>
+                  <p class="page-sub">
+                    Searches album titles on <span id="srHostLabel" class="sr-host">balbums.st</span>, a public index of
+                    bunkr albums. Open a result to preview it here, or queue and save it straight from the list.
+                  </p>
+                </div>
+              </header>
+
+              <form id="srForm" class="sr-form" autocomplete="off">
+                <div class="sr-box">
+                  <svg class="i sr-box-icon"><use href="#i-search" /></svg>
+                  <input id="srQuery" class="veil-text" type="text" placeholder="Album title — e.g. vacation" spellcheck="false" />
+                  <button id="srClear" class="search-clear sr-clear" type="button" title="Clear" hidden><svg class="i"><use href="#i-x" /></svg></button>
+                  <button id="srSubmit" type="submit" class="btn btn-primary btn-sm">Search</button>
+                </div>
+                <div class="toolbar-row sr-options">
+                  <div id="srMode" class="seg" role="radiogroup" aria-label="Match mode">
+                    <button type="button" class="seg-btn active" data-mode="broad" role="radio" aria-checked="true" title="Widest net — combines phrase, wildcard and word matching">Broad</button>
+                    <button type="button" class="seg-btn" data-mode="strict" role="radio" aria-checked="false" title="Every word must appear, in any order">Strict</button>
+                    <button type="button" class="seg-btn" data-mode="fuzzy" role="radio" aria-checked="false" title="Tolerates typos — “holday” still finds “holiday”">Fuzzy</button>
+                    <button type="button" class="seg-btn" data-mode="substring" role="radio" aria-checked="false" title="Literal fragment anywhere in the title, spaces included">Substring</button>
+                    <button type="button" class="seg-btn" data-mode="whole" role="radio" aria-checked="false" title="Exact phrase, words in order">Exact phrase</button>
+                  </div>
+                  <div class="toolbar-spacer"></div>
+                  <label class="select-wrap" title="Sort order">
+                    <select id="srSort">
+                      <option value="latest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="files">Most files</option>
+                    </select>
+                  </label>
+                  <label class="select-wrap" title="Results per page">
+                    <select id="srPer">
+                      <option value="20">20 per page</option>
+                      <option value="40">40 per page</option>
+                      <option value="60">60 per page</option>
+                      <option value="100">100 per page</option>
+                    </select>
+                  </label>
+                </div>
+              </form>
+
+              <div id="srStatus" class="sr-status num" aria-live="polite"></div>
+              <div id="srGrid" class="grid sr-grid"></div>
+              <div id="srEmpty" class="list-empty sr-empty">
+                <p id="srEmptyText">Type an album title and press Enter. Leave it empty to browse the newest albums.</p>
+                <button id="srRetryBtn" class="btn btn-sm" type="button" hidden><svg class="i"><use href="#i-retry" /></svg>Try again</button>
+              </div>
+              <nav id="srPager" class="sr-pager" aria-label="Result pages" hidden>
+                <button id="srPrev" class="btn btn-sm" type="button"><svg class="i"><use href="#i-arrow-left" /></svg>Previous</button>
+                <span id="srPageLabel" class="sr-page-label num"></span>
+                <button id="srNext" class="btn btn-sm" type="button">Next<svg class="i"><use href="#i-arrow-right" /></svg></button>
+              </nav>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ Queue view ============ -->
+        <section id="queuePanel" class="view" data-view="queue" hidden>
+          <div class="scroller">
+            <div class="page">
+              <header class="page-head">
+                <div>
+                  <div class="eyebrow">Download queue</div>
+                  <h1 class="page-title">Queue</h1>
+                  <p class="page-sub">Albums download one after another — the next starts when the previous one finishes. The queue survives restarts.</p>
+                </div>
+                <div class="page-actions">
+                  <button id="queueClearDoneBtn" type="button" class="btn btn-ghost btn-sm">Clear finished</button>
+                  <button id="queueStopBtn" type="button" class="btn btn-sm" hidden>
+                    <svg class="i"><use href="#i-stop" /></svg>Stop after current
+                  </button>
+                  <button id="queueStartBtn" type="button" class="btn btn-primary">
+                    <svg class="i"><use href="#i-play" /></svg>Start queue
+                  </button>
+                </div>
+              </header>
+
+              <div class="panel-grid">
+                <form id="queueForm" class="panel">
+                  <label class="field-label" for="queueUrls">Add albums</label>
+                  <textarea
+                    id="queueUrls"
+                    rows="4"
+                    placeholder="Paste album URLs, one per line&#10;https://bunkr.cr/a/album-id-1&#10;https://bunkr.cr/a/album-id-2"
+                    spellcheck="false"
+                  ></textarea>
+                  <div class="panel-actions">
+                    <button type="submit" class="btn btn-sm"><svg class="i"><use href="#i-plus" /></svg>Add to queue</button>
+                    <button type="button" id="queueAddStartBtn" class="btn btn-sm btn-accent">Add &amp; start</button>
+                  </div>
+                </form>
+
+                <div class="panel">
+                  <label class="field-label" for="queueOutputDir">Folder for all albums</label>
+                  <div class="path-field">
+                    <svg class="i"><use href="#i-folder" /></svg>
+                    <input id="queueOutputDir" type="text" placeholder="Pick a folder…" readonly title="Default save location for queued albums that do not have their own folder" />
+                  </div>
+                  <p class="field-help">Albums without their own folder save here. Falls back to the album view’s folder.</p>
+                  <div class="panel-actions">
+                    <button id="queueBrowseBtn" type="button" class="btn btn-sm" title="Pick the default folder for every album in the queue">Browse…</button>
+                    <button id="queueApplyFolderBtn" type="button" class="btn btn-ghost btn-sm" title="Clear per-album folders so every queued album uses the folder above">
+                      Use for all queued
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="queueHint" class="hint-line"></div>
+              <div id="queueList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ Saved view ============ -->
+        <section id="bookmarksPanel" class="view" data-view="saved" hidden>
+          <div class="scroller">
+            <div class="page">
+              <header class="page-head">
+                <div>
+                  <div class="eyebrow">Bookmarks</div>
+                  <h1 class="page-title">Saved albums</h1>
+                  <p class="page-sub">Albums you want to come back to, with notes. Stored locally on this machine.</p>
+                </div>
+                <div class="page-actions">
+                  <button id="bmAddToggle" type="button" class="btn btn-sm" aria-expanded="false" aria-controls="bmForm">
+                    <svg class="i"><use href="#i-plus" /></svg>Add by URL
+                  </button>
+                </div>
+              </header>
+
+              <form id="bmForm" class="panel bm-form" hidden>
+                <div class="bm-form-grid">
+                  <label class="field">
+                    <span class="field-label">Album URL</span>
+                    <input id="bmUrl" type="text" placeholder="https://bunkr.cr/a/…" spellcheck="false" autocomplete="off" required />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Title <span class="field-opt">optional</span></span>
+                    <input id="bmTitle" class="veil-text" type="text" placeholder="Album title" autocomplete="off" />
+                  </label>
+                </div>
+                <label class="field">
+                  <span class="field-label">Note <span class="field-opt">optional</span></span>
+                  <textarea id="bmNote" class="veil-text" rows="2" placeholder="Why save this, quality, etc."></textarea>
+                </label>
+                <div class="panel-actions">
+                  <button type="submit" class="btn btn-primary btn-sm"><svg class="i"><use href="#i-star" /></svg>Save for later</button>
+                  <button id="bmCancel" type="button" class="btn btn-ghost btn-sm">Cancel</button>
+                </div>
+              </form>
+
+              <div id="bmToolbar" class="bm-toolbar" hidden>
+                <label class="search bm-search">
+                  <svg class="i"><use href="#i-search" /></svg>
+                  <input id="bmSearch" class="veil-text" type="text" placeholder="Search title, link or note" spellcheck="false" autocomplete="off" />
+                  <button id="bmSearchClear" class="search-clear" type="button" title="Clear search" hidden><svg class="i"><use href="#i-x" /></svg></button>
+                </label>
+                <span id="bmShown" class="bm-shown num"></span>
+                <div class="toolbar-spacer"></div>
+                <label class="select-wrap" title="Sort order">
+                  <select id="bmSort">
+                    <option value="recent">Recently updated</option>
+                    <option value="added-desc">Newest saved</option>
+                    <option value="added-asc">Oldest saved</option>
+                    <option value="title">Title A–Z</option>
+                  </select>
+                </label>
+              </div>
+
+              <div id="bmList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ Settings view ============ -->
+        <section id="settingsPanel" class="view" data-view="settings" hidden>
+          <div class="scroller">
+            <div class="page page-narrow">
+              <header class="page-head">
+                <div>
+                  <div class="eyebrow">Preferences</div>
+                  <h1 class="page-title">Settings</h1>
+                  <p class="page-sub">Saved automatically.</p>
+                </div>
+              </header>
+
+              <section class="settings-group">
+                <h2 class="settings-title">Appearance</h2>
+                <div class="theme-cards" role="radiogroup" aria-label="Color theme">
+                  <button type="button" class="theme-card" data-theme-set="acid" role="radio" aria-checked="true">
+                    <span class="theme-preview tp-acid" aria-hidden="true">
+                      <span class="tp-side"></span>
+                      <span class="tp-body"><span class="tp-line"></span><span class="tp-line short"></span><span class="tp-cta"></span></span>
+                    </span>
+                    <span class="theme-card-text"><strong>Acid Lime</strong><span>Editorial black, chartreuse accents</span></span>
+                  </button>
+                  <button type="button" class="theme-card" data-theme-set="lavender" role="radio" aria-checked="false">
+                    <span class="theme-preview tp-lavender" aria-hidden="true">
+                      <span class="tp-side"></span>
+                      <span class="tp-body"><span class="tp-line"></span><span class="tp-line short"></span><span class="tp-cta"></span></span>
+                    </span>
+                    <span class="theme-card-text"><strong>Midnight Lavender</strong><span>Deep navy, lavender &amp; violet</span></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="settings-group">
+                <h2 class="settings-title">Discreet view</h2>
+                <div class="setting-row">
+                  <div class="setting-text">
+                    <strong>Discreet view</strong>
+                    <span>Swaps previews and sensitive words on screen for something neutral. Files on disk are not touched. Toggle any time with <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>H</kbd>.</span>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="discreetOn" />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </label>
+                </div>
+
+                <div class="dv-block">
+                  <span class="field-label">Previews</span>
+                  <div id="dvThumbs" class="dv-thumbs" role="radiogroup" aria-label="Preview style">
+                    <button type="button" class="dv-card" data-thumbs="type" role="radio" aria-checked="true">
+                      <span class="dv-sample" aria-hidden="true"></span>
+                      <span class="dv-card-text"><strong>File type</strong><span>Icon and extension</span></span>
+                    </button>
+                    <button type="button" class="dv-card" data-thumbs="blur" role="radio" aria-checked="false">
+                      <span class="dv-sample" aria-hidden="true"></span>
+                      <span class="dv-card-text"><strong>Blurred</strong><span>Colours only, no detail</span></span>
+                    </button>
+                    <button type="button" class="dv-card" data-thumbs="animals" role="radio" aria-checked="false">
+                      <span class="dv-sample" aria-hidden="true"></span>
+                      <span class="dv-card-text"><strong>Animals</strong><span>A friendly critter per file</span></span>
+                    </button>
+                    <button type="button" class="dv-card" data-thumbs="scenery" role="radio" aria-checked="false">
+                      <span class="dv-sample" aria-hidden="true"></span>
+                      <span class="dv-card-text"><strong>Scenery</strong><span>Hills, dunes and night skies</span></span>
+                    </button>
+                    <button type="button" class="dv-card" data-thumbs="abstract" role="radio" aria-checked="false">
+                      <span class="dv-sample" aria-hidden="true"></span>
+                      <span class="dv-card-text"><strong>Abstract</strong><span>Soft gradient wallpapers</span></span>
+                    </button>
+                    <button type="button" class="dv-card" data-thumbs="show" role="radio" aria-checked="false">
+                      <span class="dv-sample" aria-hidden="true"></span>
+                      <span class="dv-card-text"><strong>Original</strong><span>Keep real previews</span></span>
+                    </button>
+                  </div>
+                  <p class="field-help">Covered previews are not downloaded at all. Each file always gets the same picture.</p>
+                </div>
+
+                <div class="dv-block">
+                  <span class="field-label">Names</span>
+                  <div id="dvNames" class="seg" role="radiogroup" aria-label="Name style">
+                    <button type="button" class="seg-btn" data-names="swap" role="radio" aria-checked="true" title="Each sensitive word becomes an ordinary word">Neutral words</button>
+                    <button type="button" class="seg-btn" data-names="dots" role="radio" aria-checked="false" title="Each sensitive word becomes dots">Dots</button>
+                    <button type="button" class="seg-btn" data-names="generic" role="radio" aria-checked="false" title="Camera-style names: IMG_0001.jpg, VID_0002.mp4">Camera-style</button>
+                    <button type="button" class="seg-btn" data-names="off" role="radio" aria-checked="false" title="Show names unchanged">As is</button>
+                  </div>
+                  <div id="dvNamesPreview" class="cipher-preview num"></div>
+                </div>
+
+                <div class="dv-block">
+                  <span class="field-label">Sensitive words</span>
+                  <div id="dvCats" class="dv-chips" role="group" aria-label="Built-in word lists"></div>
+                  <textarea
+                    id="discreetWords"
+                    class="dv-words veil-text veil-always"
+                    rows="2"
+                    placeholder="Your own words, separated by commas or new lines. End a word with * to match any ending, e.g. model*"
+                    spellcheck="false"
+                  ></textarea>
+                  <p class="field-help">Whole words, including words joined in camelCase (NsfwClips), so &ldquo;class&rdquo; or &ldquo;Essex&rdquo; stay untouched. Name cipher uses the same lists when it replaces sensitive words on disk.</p>
+                  <div class="setting-row">
+                    <div class="setting-text">
+                      <strong>Also match inside joined words</strong>
+                      <span>Catches words glued together in one case, like &ldquo;nsfwclips&rdquo; or &ldquo;NSFWCLIPS&rdquo;. Stricter: parts of ordinary words get replaced too (&ldquo;class&rdquo;, &ldquo;Essex&rdquo;, &ldquo;cocktail&rdquo;).</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="discreetStrict" />
+                      <span class="switch-track" aria-hidden="true"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="dv-toggles">
+                  <div class="setting-row">
+                    <div class="setting-text">
+                      <strong>Hold Alt to peek</strong>
+                      <span>While Alt is held, the card under the pointer shows its real preview and name.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="discreetPeek" checked />
+                      <span class="switch-track" aria-hidden="true"></span>
+                    </label>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-text">
+                      <strong>Blur the window when you switch away</strong>
+                      <span>Covers the content whenever the app is not focused, including taskbar and Alt+Tab previews. Works even with Discreet view off.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="discreetVeil" />
+                      <span class="switch-track" aria-hidden="true"></span>
+                    </label>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-text">
+                      <strong>Always start in Discreet view</strong>
+                      <span>Otherwise the app opens the way you left it.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="discreetStartOn" />
+                      <span class="switch-track" aria-hidden="true"></span>
+                    </label>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-text">
+                      <strong>Show the toggle in the sidebar</strong>
+                      <span>A small eye next to the theme dots. Turn it off to rely on the shortcut only.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="discreetButton" checked />
+                      <span class="switch-track" aria-hidden="true"></span>
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              <section class="settings-group">
+                <h2 class="settings-title">Downloads</h2>
+                <div class="setting-row">
+                  <div class="setting-text">
+                    <strong>Retries per file</strong>
+                    <span>How often a file is retried after a network error, rate limit (429) or server error. Interrupted files continue where they stopped.</span>
+                  </div>
+                  <input id="setMaxRetries" class="setting-input setting-input-sm num" type="number" min="0" max="10" value="5" />
+                </div>
+                <div class="setting-row">
+                  <div class="setting-text">
+                    <strong>Speed limit (MB/s)</strong>
+                    <span>Total across all parallel downloads. 0 means unlimited.</span>
+                  </div>
+                  <input id="setLimitRate" class="setting-input setting-input-sm num" type="number" min="0" step="0.5" value="0" />
+                </div>
+                <div class="setting-row" data-desktop-only>
+                  <div class="setting-text">
+                    <strong>Proxy</strong>
+                    <span>http://host:port, https://host:port or socks5://host:port. Used for every request. Leave empty for a direct connection.</span>
+                  </div>
+                  <input id="setProxy" class="setting-input" type="text" placeholder="socks5://127.0.0.1:1080" spellcheck="false" autocomplete="off" />
+                </div>
+                <div class="setting-row">
+                  <div class="setting-text">
+                    <strong>When Bunkr is under maintenance</strong>
+                    <span>Wait and retry a few times, or skip the file and let you retry later.</span>
+                  </div>
+                  <label class="select-wrap">
+                    <select id="setMaintenance">
+                      <option value="backoff">Wait and retry</option>
+                      <option value="skip">Skip the file</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="setting-row" data-desktop-only>
+                  <div class="setting-text">
+                    <strong>Check free disk space</strong>
+                    <span>Refuse to start when the selected files clearly will not fit.</span>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="setDiskCheck" checked />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </section>
+
+              <section class="settings-group">
+                <h2 class="settings-title">Disk check</h2>
+                <div class="setting-row">
+                  <div class="setting-text">
+                    <strong id="mismatchLabel">Re-download size mismatches</strong>
+                    <span>When Check disk is on, files whose local size differs from the expected size are downloaded again.</span>
+                  </div>
+                  <label class="switch" id="mismatchOpt">
+                    <input type="checkbox" id="redownloadMismatch" checked />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </label>
+                </div>
+                <div class="setting-note">
+                  <svg class="i"><use href="#i-shield" /></svg>
+                  <span>Disk checks only read the chosen local folder — file names, sizes and a few header bytes. Nothing is uploaded or hashed to a cloud index. Thumbnails load with <code>no-referrer</code>, so album URLs are not leaked to the CDN.</span>
+                </div>
+              </section>
+
+              <section class="settings-group">
+                <h2 class="settings-title">Name cipher</h2>
+                <div class="setting-row">
+                  <div class="setting-text">
+                    <strong>Replace a word in created names</strong>
+                    <span>Applies to the album folder and file names this app creates (case-insensitive).</span>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="cipherEnabled" />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </label>
+                </div>
+                <div id="cipherFields" class="cipher-fields" hidden>
+                  <input id="cipherFind" class="veil-text" type="text" placeholder="Word to replace" spellcheck="false" autocomplete="off" />
+                  <svg class="i cipher-arrow"><use href="#i-arrow-right" /></svg>
+                  <input id="cipherReplace" type="text" placeholder="Replacement" spellcheck="false" autocomplete="off" />
+                  <button id="cipherRandom" type="button" class="btn btn-sm" title="Fill replacement with a random token">
+                    <svg class="i"><use href="#i-shuffle" /></svg>Random
+                  </button>
+                  <div id="cipherPreview" class="cipher-preview num"></div>
+                </div>
+                <div class="setting-row cipher-sensitive">
+                  <div class="setting-text">
+                    <strong>Replace sensitive words in saved names</strong>
+                    <span>Every word from the Discreet view lists becomes a neutral word (e.g. &ldquo;maple&rdquo;) in folder and file names on disk. The same word always gets the same replacement.</span>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="cipherSensitive" />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </section>
+
+              <section class="settings-group">
+                <h2 class="settings-title">Album search</h2>
+                <div class="setting-row">
+                  <div class="setting-text">
+                    <strong>Search site</strong>
+                    <span>The album index that Search reads. Change it if the site moves to a new domain; leave empty for the default.</span>
+                  </div>
+                  <input id="searchHost" class="setting-input" type="text" placeholder="https://balbums.st" spellcheck="false" autocomplete="off" />
+                </div>
+                <div class="setting-note">
+                  <svg class="i"><use href="#i-shield" /></svg>
+                  <span>Only your search words are sent to this site. Results link straight to bunkr albums, and their thumbnails load with <code>no-referrer</code>.</span>
+                </div>
+              </section>
+
+              <section class="settings-group">
+                <h2 class="settings-title">Keyboard</h2>
+                <dl class="shortcuts">
+                  <div><dt><kbd>Ctrl</kbd><kbd>L</kbd></dt><dd>Focus the album link field</dd></div>
+                  <div><dt><kbd>Ctrl</kbd><kbd>K</kbd></dt><dd>Search albums</dd></div>
+                  <div><dt><kbd>Ctrl</kbd><kbd>F</kbd></dt><dd>Filter files by name</dd></div>
+                  <div><dt><kbd>Ctrl</kbd><kbd>A</kbd></dt><dd>Select / deselect all visible files</dd></div>
+                  <div><dt><kbd>Shift</kbd> + click</dt><dd>Select a range of files</dd></div>
+                  <div><dt><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>H</kbd></dt><dd>Turn Discreet view on / off</dd></div>
+                  <div><dt>Hold <kbd>Alt</kbd></dt><dd>Peek at a covered preview</dd></div>
+                </dl>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
