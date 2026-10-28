@@ -6,7 +6,23 @@ A bunkr media downloader with both a **desktop UI** (Electron) and a **CLI**.
 
 > Not affiliated with Bunkr. Download only content you own or are allowed to download — see [Disclaimer](#disclaimer).
 
-![bunkr-download start screen](assets/screenshot.png)
+![Paste an album link, preview it, pick files and download them](assets/demo.gif)
+
+## Screenshots
+
+The pictures are recorded from the real app against a local demo album of generated landscapes.
+
+**Check disk** — see what is already in the folder, what is broken and what is missing, and select only what needs downloading.
+
+![Check disk marks files as On disk, Size mismatch, Corrupt or Incomplete](assets/check-disk.png)
+
+**Download queue** — line up several albums; they download one after another.
+
+![The download queue with one album done, one downloading and two waiting](assets/queue.png)
+
+**Discreet view** — previews become cute animals (or blur, scenery, file icons) when other people can see your screen.
+
+![Album previews replaced with animal pictures in Discreet view](assets/discreet.png)
 
 ## Features
 
@@ -72,7 +88,10 @@ The portable build is not code-signed, so Windows SmartScreen may warn on first 
 ```bash
 npm test      # node:test suite (mock servers; never touches the real bunkr)
 npm run lint
+npm run readme-media  # re-record the README GIF and screenshots in assets/
 ```
+
+`readme-media` runs the desktop app against a local demo site (`https://bunkr.demo`, only inside that run) with generated pictures. It needs ffmpeg on PATH, openssl (Git for Windows includes it) and a free port 443; the app window shows for about a minute, so leave it alone while it records.
 
 ## Desktop UI
 
@@ -237,6 +256,7 @@ electron/main.js    # Electron main process, IPC (download jobs, Stop)
 electron/store.js   # local bookmarks, UI settings, download queue (Electron userData)
 extension/          # Chrome extension sources: window.api for the shared UI, folder access, downloads
 scripts/build-extension.mjs  # bundles the extension into dist/extension
+scripts/readme-media/        # records the README GIF and screenshots against a local demo site
 test/               # node:test suites (mock Bunkr / CDN servers, in-memory folder for the extension)
 ```
 

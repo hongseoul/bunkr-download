@@ -33,6 +33,11 @@ export default [
     },
   },
   {
+    // Browser scripts that scripts/readme-media/record.mjs injects into pages.
+    files: ['scripts/readme-media/*.js'],
+    languageOptions: { ecmaVersion: 2023, sourceType: 'script', globals: globals.browser },
+  },
+  {
     // Renderer: a classic browser script that talks to the main process through window.api.
     files: ['electron/ui/**/*.js'],
     languageOptions: {
