@@ -2853,6 +2853,43 @@ function searchHostLabel() {
   }
 }
 
+/**
+ * A link to the album search site itself (e.g. balbums.st/?search=beach&mode=strict)
+ * → that search's words and options; anything else → null.
+ */
+function searchFromLink(text) {
+  let u;
+  try {
+    u = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+  } catch {
+    return null;
+  }
+  const bare = (h) => String(h).toLowerCase().replace(/^www\./, '');
+  const hosts = new Set([DEFAULT_SEARCH_HOST, searchHostLabel()].map(bare));
+  if (!hosts.has(bare(u.host)) || looksLikeAlbumUrl(u.href)) return null;
+  const p = u.searchParams;
+  return {
+    query: (p.get('search') || p.get('q') || '').trim(),
+    mode: p.get('mode'),
+    sort: p.get('sort'),
+    per: p.get('per'),
+    page: Math.max(1, parseInt(p.get('page'), 10) || 1),
+  };
+}
+
+/** Carry over the options a pasted search link had, where this app knows them. */
+function applySearchLinkOptions({ mode, sort, per }) {
+  if (mode && els.srMode.querySelector(`.seg-btn[data-mode="${CSS.escape(mode)}"]`)) setSearchMode(mode);
+  if (sort && [...els.srSort.options].some((o) => o.value === sort)) {
+    els.srSort.value = search.sort = sort;
+  }
+  if (per && [...els.srPer.options].some((o) => o.value === per)) {
+    els.srPer.value = per;
+    search.per = parseInt(per, 10);
+  }
+  persistSettingsSoon();
+}
+
 /** Link-field text that is not a link is treated as a search query. */
 function looksLikeLink(text) {
   return /^https?:\/\//i.test(text) || /^[\w-]+(?:\.[\w-]+)+\/\S*$/.test(text);
@@ -3127,6 +3164,16 @@ els.loadBtn.addEventListener('click', async () => {
     els.urlInput.value = state.album?.albumUrl || '';
     openSearch({ focus: false });
     runSearch({ query: url });
+    return;
+  }
+  const linked = searchFromLink(url);
+  if (linked) {
+    // A search-site link (balbums.st/?search=…): show that search here instead of
+    // failing with "Not an album URL".
+    els.urlInput.value = state.album?.albumUrl || '';
+    applySearchLinkOptions(linked);
+    openSearch({ focus: false });
+    runSearch({ query: linked.query, page: linked.page });
     return;
   }
   if (state.queueRunning) { toast('Queue is running — wait or stop after the current album', 'warn'); return; }
