@@ -28,6 +28,7 @@ const els = {
   dpSpeed: document.getElementById('dpSpeed'),
   dpEta: document.getElementById('dpEta'),
   toggleDetailsBtn: document.getElementById('toggleDetailsBtn'),
+  progressCloseBtn: document.getElementById('progressCloseBtn'),
   activity: document.getElementById('activity'),
   activityLabel: document.getElementById('activityLabel'),
   activityFill: document.getElementById('activityFill'),
@@ -1830,6 +1831,7 @@ function renderRunStats() {
 function updateActivity() {
   const busy = state.downloading || state.queueRunning;
   els.activity.hidden = !busy;
+  els.progressCloseBtn.hidden = busy || run.active;
   if (!busy) return;
   let label = 'Downloading';
   if (state.queueRunning) {
@@ -3660,6 +3662,10 @@ function refreshFileProgressNames() {
 function cssEscape(s) {
   return String(s).replace(/[^a-zA-Z0-9_-]/g, (m) => '\\' + m);
 }
+
+els.progressCloseBtn.addEventListener('click', () => {
+  els.progressSection.hidden = true;
+});
 
 els.toggleDetailsBtn.addEventListener('click', () => {
   const open = els.fileProgress.hidden;
