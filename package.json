@@ -1,6 +1,6 @@
 {
   "name": "bunkr-download",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A media downloader for bunkr file storage with concurrent, resumable downloads, batch URL lists, filters, custom output locations, progress indication, organized directory structure, and error logging. Includes a desktop UI (Electron) for previewing albums and selecting files.",
   "type": "module",
   "main": "electron/main.js",
