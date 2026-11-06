@@ -15,7 +15,7 @@ import {
   parseSize,
   sleep,
 } from '../src/net.js';
-import { checkDiskSpace, freeBytes } from '../src/disk.js';
+import { checkDiskSpace, diskInfo, freeBytes } from '../src/disk.js';
 
 test('retry: retries retryable errors up to the budget, then throws the last one', async () => {
   let calls = 0;
@@ -143,4 +143,17 @@ test('disk space: ok when unknown or small, refuses when clearly too big', async
 test('disk space: a not-yet-created output folder is measured through its parent', async () => {
   const free = await freeBytes(`${process.cwd()}/does/not/exist/yet`);
   assert.ok(free === null || free > 0);
+});
+
+test('disk info: folders on one drive share a volume, missing folders resolve through a parent', async () => {
+  const here = process.cwd();
+  const info = await diskInfo([here, `${here}/does/not/exist/yet`, '', here]);
+  assert.deepEqual(Object.keys(info).sort(), [here, `${here}/does/not/exist/yet`].sort());
+  const a = info[here];
+  const b = info[`${here}/does/not/exist/yet`];
+  assert.ok(a && b);
+  assert.ok(a.free > 0);
+  assert.equal(a.volume, b.volume);
+  assert.ok(a.label);
+  if (process.platform === 'win32') assert.match(a.label, /^[A-Z]:$/);
 });

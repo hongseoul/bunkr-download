@@ -206,6 +206,10 @@ function sanitizeQueueItem(it, { uuid, now }) {
     selectedFiles: Array.isArray(it.selectedFiles) ? it.selectedFiles.filter(Boolean) : null,
     outputDir: String(it.outputDir || ''),
     fileCount: Math.max(0, parseInt(it.fileCount, 10) || 0),
+    // Album size measured from the file list (selected files only); `sized` = measured at all.
+    sizeBytes: Math.max(0, Number(it.sizeBytes) || 0),
+    sizeMissing: Math.max(0, parseInt(it.sizeMissing, 10) || 0),
+    sized: !!it.sized,
     status,
     error: String(it.error || ''),
     result: it.result && typeof it.result === 'object' ? it.result : null,

@@ -52,7 +52,8 @@ const els = {
   queueList: document.getElementById('queueList'),
   queueOutputDir: document.getElementById('queueOutputDir'),
   queueBrowseBtn: document.getElementById('queueBrowseBtn'),
-  queueApplyFolderBtn: document.getElementById('queueApplyFolderBtn'),
+  queueMoveAllBtn: document.getElementById('queueMoveAllBtn'),
+  queueSpace: document.getElementById('queueSpace'),
   empty: document.getElementById('emptyState'),
   previewSection: document.getElementById('previewSection'),
   grid: document.getElementById('grid'),
@@ -710,6 +711,7 @@ function setView(name) {
     else b.removeAttribute('aria-current');
   }
   if (name === 'search') updateSearchMarks();
+  if (name === 'queue') refreshDiskSoon(0);
 }
 
 function applyTheme(name, { persist = true } = {}) {
@@ -901,10 +903,12 @@ function parseUrlList(text) {
     .filter((l) => l && !l.startsWith('#'));
 }
 
+function isPendingQueueItem(q) {
+  return q.status === 'queued' || q.status === 'loading' || q.status === 'downloading';
+}
+
 function pendingQueueCount() {
-  return state.queue.filter((q) =>
-    q.status === 'queued' || q.status === 'loading' || q.status === 'downloading'
-  ).length;
+  return state.queue.filter(isPendingQueueItem).length;
 }
 
 function queueHasActiveUrl(url) {
@@ -925,12 +929,16 @@ function persistQueueSoon() {
       selectedFiles: q.selectedFiles,
       outputDir: q.outputDir || '',
       fileCount: q.fileCount || 0,
+      sizeBytes: q.sizeBytes || 0,
+      sizeMissing: q.sizeMissing || 0,
+      sized: !!q.sized,
       status: q.status === 'done' || q.status === 'failed' ? q.status : 'queued',
       error: q.error || '',
       result: q.result || null,
       addedAt: q.addedAt,
     })));
   }, 200);
+  refreshDiskSoon();
 }
 
 function closeDrawers() {
@@ -941,25 +949,45 @@ function setQueueOpen(open) {
   setView(open ? 'queue' : 'album');
 }
 
+/** Folder the Add albums form puts new albums in: the last one picked there, else the album view's. */
 function queueDefaultDir() {
   return state.queueOutputDir || state.outputDir || '';
 }
 
+/** Each queued album keeps the folder it was given when it was added. */
 function resolveQueueItemOutputDir(item) {
-  if (!item) return queueDefaultDir();
-  return item.outputDir || queueDefaultDir();
+  return item?.outputDir || '';
+}
+
+function isWaitingQueueItem(q) {
+  return q.status === 'queued' || q.status === 'failed';
 }
 
 function syncQueueFolderInput() {
-  els.queueOutputDir.value = state.queueOutputDir || '';
-  els.queueOutputDir.placeholder = state.outputDir
-    ? `Using Output folder: ${state.outputDir}`
-    : 'Pick a folder for the queue…';
-  els.queueOutputDir.title = state.queueOutputDir
-    ? 'Default save location for queued albums without their own folder'
-    : (state.outputDir
-      ? `No queue folder set — albums without a custom folder use ${state.outputDir}`
-      : 'Default save location for queued albums that do not have their own folder');
+  const dir = queueDefaultDir();
+  els.queueOutputDir.textContent = dir || 'Choose a folder…';
+  els.queueOutputDir.classList.toggle('empty', !dir);
+  els.queueBrowseBtn.classList.toggle('needs-folder', !dir);
+  els.queueBrowseBtn.title = dir
+    ? `Albums you add now save to ${dir} — click to change. Albums already in the queue keep their folder.`
+    : 'Choose where the albums you add save';
+}
+
+/**
+ * Albums queued by older versions have no folder of their own and followed the shared
+ * one at download time. Pin them to that folder once so nothing moves silently later.
+ */
+function pinUnsetQueueFolders() {
+  const dir = queueDefaultDir();
+  if (!dir) return;
+  let changed = false;
+  for (const q of state.queue) {
+    if (!q.outputDir) {
+      q.outputDir = dir;
+      changed = true;
+    }
+  }
+  if (changed) persistQueueSoon();
 }
 
 function queueAlbumPrefix() {
@@ -992,6 +1020,206 @@ function queueItemMeta(item) {
   if (item.selectedFiles) return `${item.selectedFiles.length} selected file(s)`;
   if (item.fileCount) return `${item.fileCount} file(s) · all files`;
   return 'All files';
+}
+
+// ---------- queue size vs free disk space ----------
+
+const GB = 1024 ** 3;
+/** Kept free on top of the queue, same as the pre-download check in src/disk.js. */
+const DISK_RESERVE = 64 * 1024 * 1024;
+const disk = { info: {}, key: '', timer: 0, seq: 0 };
+const sizing = { running: false, failed: new Set() };
+
+/** Album size from its file list: only the selected files count when a subset was picked. */
+function measureQueueItem(item, files) {
+  if (!Array.isArray(files) || !files.length) return;
+  const pick = item.selectedFiles ? new Set(item.selectedFiles) : null;
+  let bytes = 0;
+  let missing = 0;
+  for (const f of files) {
+    if (pick && !pick.has(f.pageUrl)) continue;
+    const n = Number(f.sizeBytes) || 0;
+    if (n > 0) bytes += n;
+    else missing++;
+  }
+  item.sizeBytes = bytes;
+  item.sizeMissing = missing;
+  item.sized = true;
+  sizing.failed.delete(item.id);
+}
+
+/** Fetch the file list of queued albums that have no size yet, one album at a time. */
+async function measureQueueSizes() {
+  if (sizing.running) return;
+  sizing.running = true;
+  try {
+    for (;;) {
+      const item = state.queue.find((q) => isPendingQueueItem(q) && !q.sized
+        && q.id !== state.queueActiveId && !sizing.failed.has(q.id));
+      if (!item) break;
+      item.sizing = true;
+      renderQueue();
+      const r = await window.api.albumMeta(item.url).catch((e) => ({ ok: false, error: e.message }));
+      item.sizing = false;
+      if (!state.queue.includes(item)) continue;
+      const files = r?.ok ? (r.album?.files || []) : [];
+      if (files.length) {
+        if (!item.filesCache?.length) item.filesCache = files;
+        if (!item.selectedFiles) item.fileCount = files.length;
+        const name = r.album.albumName;
+        if (name && (!item.title || item.title === albumIdFromUrl(item.url))) item.title = name;
+        measureQueueItem(item, files);
+      } else {
+        sizing.failed.add(item.id);
+      }
+      persistQueueSoon();
+      renderQueue();
+    }
+  } finally {
+    sizing.running = false;
+  }
+}
+
+function queueDiskDirs() {
+  return [...new Set(state.queue.filter(isPendingQueueItem).map(resolveQueueItemOutputDir).filter(Boolean))];
+}
+
+/** Re-read free space for every folder the waiting albums save to (desktop app only). */
+async function refreshDiskInfo() {
+  if (!window.api.diskInfo) return;
+  const dirs = queueDiskDirs();
+  const seq = ++disk.seq;
+  const r = dirs.length ? await window.api.diskInfo(dirs).catch(() => null) : { ok: true, info: {} };
+  if (seq !== disk.seq) return;
+  disk.info = r?.ok ? (r.info || {}) : {};
+  // Skip the redraw when nothing visible moved (free space is shown to 0.1 GB at best).
+  const key = JSON.stringify(Object.entries(disk.info).map(([d, v]) =>
+    [d, v ? v.volume : null, v ? Math.round(v.free / (64 * 1024 * 1024)) : null]));
+  if (key === disk.key) return;
+  disk.key = key;
+  renderQueue();
+}
+
+function refreshDiskSoon(ms = 150) {
+  clearTimeout(disk.timer);
+  disk.timer = setTimeout(refreshDiskInfo, ms);
+}
+
+/** Bytes still to come for an album; the running one counts only its unfinished share. */
+function queueItemRemainingBytes(q) {
+  const size = q.sizeBytes || 0;
+  if (q.status === 'downloading' && q.total) {
+    return Math.max(0, size * (1 - Math.min(1, (q.completed || 0) / q.total)));
+  }
+  return size;
+}
+
+function spaceLevel(free, needed) {
+  const left = free - DISK_RESERVE - needed;
+  if (left < 0) return 'over';
+  if (left < Math.max(GB, free * 0.1)) return 'tight';
+  return 'ok';
+}
+
+/**
+ * Waiting albums grouped by the drive they save to, in queue order. Each album is checked
+ * against the free space left after the albums above it on the same drive.
+ */
+function queueSpacePlan() {
+  const vols = new Map();
+  const perItem = new Map();
+  const canCheck = !!window.api.diskInfo;
+  for (const q of state.queue) {
+    if (!isPendingQueueItem(q)) continue;
+    const dir = resolveQueueItemOutputDir(q);
+    const d = dir ? disk.info[dir] : null;
+    const key = !dir ? 'nofolder' : d ? 'v:' + d.volume : canCheck ? 'dir:' + dir : 'any';
+    let v = vols.get(key);
+    if (!v) {
+      v = {
+        label: !dir ? 'No folder yet' : d ? d.label : canCheck ? dir : 'All waiting albums',
+        free: d ? d.free : null,
+        why: !dir ? 'Choose a folder to compare with free space'
+          : d ? '' : canCheck ? 'Checking free space…' : 'A browser tab can’t see free disk space',
+        needed: 0, missing: 0, unsized: 0, measuring: 0, level: '',
+      };
+      vols.set(key, v);
+    }
+    if (!q.sized) {
+      v.unsized++;
+      if (!sizing.failed.has(q.id)) v.measuring++;
+      continue;
+    }
+    v.needed += queueItemRemainingBytes(q);
+    v.missing += q.sizeMissing || 0;
+    if (v.free != null) perItem.set(q.id, { level: spaceLevel(v.free, v.needed), label: v.label });
+  }
+  for (const v of vols.values()) {
+    if (v.free != null && v.needed) v.level = spaceLevel(v.free, v.needed);
+  }
+  return { vols: [...vols.values()], perItem };
+}
+
+function sizeLabel(bytes, missing) {
+  if (!bytes) return missing ? 'size unknown' : '0 B';
+  return `${missing ? '≥' : '≈'} ${fmtBytes(bytes)}`;
+}
+
+function renderQueueSpace(plan) {
+  const box = els.queueSpace;
+  box.innerHTML = '';
+  const rows = plan.vols.filter((v) => v.needed || v.unsized || v.missing);
+  box.hidden = !rows.length;
+  for (const v of rows) {
+    const row = el('div', 'space-row' + (v.level ? ' ' + v.level : ''));
+    row.appendChild(icon('disk'));
+    const main = el('div', 'space-main');
+    const drive = el('span', 'space-drive', v.label);
+    drive.title = v.label;
+    main.appendChild(drive);
+    const need = el('span', 'space-num', 'Queue ');
+    need.appendChild(el('b', null, v.needed || v.missing ? sizeLabel(v.needed, v.missing) : '…'));
+    main.appendChild(need);
+    if (v.free != null) {
+      const free = el('span', 'space-num', 'Free ');
+      free.appendChild(el('b', null, v.free > 0 ? fmtBytes(v.free) : '0 B'));
+      main.appendChild(free);
+    }
+    const notes = [];
+    if (v.why) notes.push(v.why);
+    if (v.measuring) notes.push(`Measuring ${v.measuring} album(s)…`);
+    if (v.unsized > v.measuring) notes.push(`${v.unsized - v.measuring} album(s) with unknown size are not counted`);
+    if (v.missing) notes.push(`${v.missing} file(s) have no size listed, so the real total is larger`);
+    if (notes.length) main.appendChild(el('span', 'space-note', notes.join(' · ')));
+    row.appendChild(main);
+
+    let verdict = '';
+    if (v.level === 'ok') verdict = 'Enough space';
+    else if (v.level === 'tight') verdict = `Tight · ${fmtBytes(Math.max(0, v.free - v.needed))} left after`;
+    else if (v.level === 'over') verdict = `Not enough · ${fmtBytes(v.needed + DISK_RESERVE - v.free)} short`;
+    row.appendChild(el('span', 'space-verdict', verdict));
+    box.appendChild(row);
+  }
+}
+
+/** Size chip on a queue card; colored by whether the album still fits on its drive. */
+function queueSizeEl(item, fit) {
+  if (item.sizing) return el('span', 'q-size pending', 'Measuring size…');
+  if (!item.sized) {
+    if (!isPendingQueueItem(item)) return null;
+    return el('span', 'q-size pending', sizing.failed.has(item.id) ? 'Size unknown' : 'Size…');
+  }
+  const level = isPendingQueueItem(item) && fit ? fit.level : '';
+  const chip = el('span', 'q-size' + (level && level !== 'ok' ? ' ' + level : ''), sizeLabel(item.sizeBytes, item.sizeMissing));
+  if (level === 'over') {
+    chip.textContent += ' · won’t fit';
+    chip.title = `Not enough free space on ${fit.label} for this album (counting the albums above it on the same drive)`;
+  } else if (level === 'tight') {
+    chip.title = `Fits on ${fit.label}, but little space will be left`;
+  } else if (item.sizeMissing) {
+    chip.title = `${item.sizeMissing} file(s) have no size listed`;
+  }
+  return chip;
 }
 
 function updateQueueBadge() {
@@ -1051,6 +1279,10 @@ function renderQueue() {
   updateQueueBadge();
   updateQueueRunStatus();
   const items = state.queue || [];
+  // A single album has its own folder button; the bulk action only helps with two or more.
+  els.queueMoveAllBtn.hidden = items.filter(isWaitingQueueItem).length < 2;
+  const plan = queueSpacePlan();
+  renderQueueSpace(plan);
   els.queueList.innerHTML = '';
   if (!items.length) {
     els.queueList.appendChild(el('div', 'list-empty', 'Queue is empty. Paste album URLs above, or use “Add to queue” on an open album.'));
@@ -1063,7 +1295,8 @@ function renderQueue() {
     card.className = 'q-card'
       + (item.id === state.queueActiveId ? ' active' : '')
       + (item.status === 'done' ? ' done' : '')
-      + (item.status === 'failed' ? ' failed' : '');
+      + (item.status === 'failed' ? ' failed' : '')
+      + (plan.perItem.get(item.id)?.level === 'over' ? ' no-space' : '');
     card.dataset.id = item.id;
 
     card.appendChild(el('div', 'q-index', String(index + 1).padStart(2, '0')));
@@ -1080,18 +1313,17 @@ function renderQueue() {
 
     const line = el('div', 'q-line');
     line.appendChild(el('span', 'q-meta', queueItemMeta(item)));
+    const sizeEl = queueSizeEl(item, plan.perItem.get(item.id));
+    if (sizeEl) line.appendChild(sizeEl);
     const dest = resolveQueueItemOutputDir(item);
-    const folderEl = el('span', 'q-folder' + (item.outputDir ? ' custom' : '') + (dest ? '' : ' none'));
+    const folderEl = el('span', 'q-folder' + (dest ? '' : ' none'));
     folderEl.appendChild(icon('folder'));
     const folderText = el('span');
-    if (item.outputDir) {
+    if (dest) {
       folderText.textContent = dest;
-      folderEl.title = `Custom folder: ${dest}`;
-    } else if (dest) {
-      folderText.textContent = dest;
-      folderEl.title = `Uses the queue folder: ${dest}`;
+      folderEl.title = `Saves to ${dest}`;
     } else {
-      folderText.textContent = 'No folder yet — set the queue folder above';
+      folderText.textContent = 'No folder yet — choose one with the folder button';
     }
     folderEl.appendChild(folderText);
     line.appendChild(folderEl);
@@ -1146,19 +1378,11 @@ function renderQueue() {
     }
 
     if (!busy) {
-      actions.appendChild(makeBtn({
-        iconName: 'folder', cls: 'btn btn-sm btn-ghost btn-icon',
-        title: item.outputDir ? 'Pick a different folder for this album only' : 'Pick a folder for this album only',
-        onClick: () => pickQueueItemFolder(item.id),
-      }));
-
-      if (item.outputDir) {
+      if (item.status !== 'done') {
         actions.appendChild(makeBtn({
-          label: 'Use default', cls: 'btn btn-sm btn-ghost',
-          title: queueDefaultDir()
-            ? `Use the queue folder (${queueDefaultDir()})`
-            : 'Use the queue folder (set above or the album view folder)',
-          onClick: () => clearQueueItemFolder(item.id),
+          iconName: 'folder', cls: 'btn btn-sm btn-ghost btn-icon',
+          title: 'Change the folder for this album only',
+          onClick: () => pickQueueItemFolder(item.id),
         }));
       }
 
@@ -1204,18 +1428,39 @@ function retryQueueItem(id) {
   item.result = null;
   item.completed = 0;
   item.total = 0;
+  sizing.failed.delete(item.id);
   persistQueueSoon();
   renderQueue();
+  measureQueueSizes();
 }
 
+/**
+ * Pick the folder for albums added from now on. Albums already queued keep theirs,
+ * except ones that have no folder at all — those take this one.
+ */
 async function pickQueueDefaultFolder({ quiet = false } = {}) {
   const r = await window.api.pickFolder();
   if (!r.ok) return '';
   state.queueOutputDir = r.path;
   syncQueueFolderInput();
   persistSettingsSoon();
+  let filled = 0;
+  for (const q of state.queue) {
+    if (isWaitingQueueItem(q) && !q.outputDir) {
+      q.outputDir = r.path;
+      filled++;
+    }
+  }
+  if (filled) persistQueueSoon();
   renderQueue();
-  if (!quiet) toast(`Queue folder: ${r.path}`, 'ok');
+  if (!quiet) {
+    toast(
+      filled
+        ? `New albums save to ${r.path} (also set for ${filled} album(s) that had no folder)`
+        : `New albums save to ${r.path}`,
+      'ok'
+    );
+  }
   return r.path;
 }
 
@@ -1231,41 +1476,21 @@ async function pickQueueItemFolder(id) {
   toast(`Folder for this album: ${r.path}`, 'ok');
 }
 
-function clearQueueItemFolder(id) {
-  const item = state.queue.find((q) => q.id === id);
-  if (!item) return;
-  if (item.status === 'loading' || item.status === 'downloading') return;
-  item.outputDir = '';
-  persistQueueSoon();
-  renderQueue();
-}
-
-async function applyQueueFolderToAllQueued() {
-  let dir = queueDefaultDir();
-  if (!dir) {
-    dir = await pickQueueDefaultFolder({ quiet: true });
-    if (!dir) {
-      toast('Pick a queue folder first', 'warn');
-      return;
-    }
-  }
-  let cleared = 0;
+/** Send every album that has not downloaded yet to one folder. */
+async function moveAllWaitingToFolder() {
+  if (!state.queue.some(isWaitingQueueItem)) return;
+  const r = await window.api.pickFolder();
+  if (!r.ok) return;
+  let moved = 0;
   for (const q of state.queue) {
-    if (q.status === 'loading' || q.status === 'downloading') continue;
-    if (q.status !== 'queued' && q.status !== 'failed') continue;
-    if (q.outputDir) {
-      q.outputDir = '';
-      cleared++;
+    if (isWaitingQueueItem(q)) {
+      q.outputDir = r.path;
+      moved++;
     }
   }
   persistQueueSoon();
   renderQueue();
-  toast(
-    cleared
-      ? `Cleared ${cleared} custom folder(s). Queued albums use ${dir}`
-      : `Queued albums use ${dir}`,
-    'ok'
-  );
+  toast(`${moved} waiting album(s) will save to ${r.path}`, 'ok');
 }
 
 function clearFinishedQueue() {
@@ -1285,6 +1510,7 @@ function addUrlsToQueue(text, extras = {}) {
   let added = 0;
   let dupes = 0;
   let skipped = 0;
+  const dir = extras.outputDir || queueDefaultDir();
   for (const line of lines) {
     if (!looksLikeAlbumUrl(line)) {
       skipped++;
@@ -1300,7 +1526,7 @@ function addUrlsToQueue(text, extras = {}) {
       url,
       title: (single && extras.title) || albumIdFromUrl(url) || url,
       selectedFiles: single && extras.selectedFiles ? extras.selectedFiles : null,
-      outputDir: single && extras.outputDir ? extras.outputDir : '',
+      outputDir: dir,
       fileCount: single ? (extras.fileCount || 0) : 0,
       status: 'queued',
       error: '',
@@ -1308,11 +1534,14 @@ function addUrlsToQueue(text, extras = {}) {
       addedAt: new Date().toISOString(),
       filesCache: single ? extras.filesCache || null : null,
     });
+    const item = state.queue[state.queue.length - 1];
+    if (item.filesCache?.length) measureQueueItem(item, item.filesCache);
     added++;
   }
   if (added) persistQueueSoon();
   renderQueue();
-  return { added, dupes, skipped, total: lines.length };
+  if (added) measureQueueSizes();
+  return { added, dupes, skipped, total: lines.length, dir };
 }
 
 function announceQueueAdd(r) {
@@ -1321,7 +1550,7 @@ function announceQueueAdd(r) {
     return;
   }
   const bits = [];
-  if (r.added) bits.push(`Added ${r.added}`);
+  if (r.added) bits.push(r.dir ? `Added ${r.added} → ${r.dir}` : `Added ${r.added} (no folder yet)`);
   if (r.dupes) bits.push(`${r.dupes} already queued`);
   if (r.skipped) bits.push(`${r.skipped} skipped (not album URLs)`);
   toast(bits.join(' · ') || 'No URLs to add', r.added ? 'ok' : 'warn');
@@ -1339,6 +1568,8 @@ function addCurrentAlbumToQueue() {
     selectedFiles: all ? null : selectedFiles,
     fileCount: selectedFiles.length,
     filesCache: state.files,
+    // Added from the album screen: follow the Save to chip shown right next to the button.
+    outputDir: state.outputDir,
   });
   if (r.added) {
     toast(
@@ -1703,6 +1934,7 @@ async function prepareQueueAlbum(item) {
   item.title = album.albumName || item.title;
   item.fileCount = files.length;
   item.filesCache = files;
+  measureQueueItem(item, files);
 
   const selectedUrls = item.selectedFiles
     ? files.map((f) => f.pageUrl).filter((u) => item.selectedFiles.includes(u))
@@ -1740,7 +1972,7 @@ async function startQueue() {
   if (needsFolder) {
     const picked = await pickQueueDefaultFolder();
     if (!picked) {
-      toast('Pick a folder for the queue first', 'warn');
+      toast('Choose where to save the queued albums first', 'warn');
       return;
     }
     if (!state.outputDir) {
@@ -3524,7 +3756,7 @@ els.queueStopBtn.addEventListener('click', () => requestStopQueue());
 els.queueClearDoneBtn.addEventListener('click', () => clearFinishedQueue());
 els.queueUrls.addEventListener('input', () => updateQueueRunStatus());
 els.queueBrowseBtn.addEventListener('click', () => pickQueueDefaultFolder());
-els.queueApplyFolderBtn.addEventListener('click', () => applyQueueFolderToAllQueued());
+els.queueMoveAllBtn.addEventListener('click', () => moveAllWaitingToFolder());
 
 els.bmForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -3638,7 +3870,14 @@ async function init() {
   await refreshBookmarks();
   const q = await window.api.listQueue();
   state.queue = q.ok ? (q.items || []) : [];
+  pinUnsetQueueFolders();
   renderQueue();
+  refreshDiskSoon(0);
+  measureQueueSizes();
+  // Free space drops while albums download; keep the numbers current while the queue is on screen.
+  setInterval(() => {
+    if (view.current === 'queue' && !document.hidden && state.queue.some(isPendingQueueItem)) refreshDiskInfo();
+  }, 15000);
   setSelectedCount();
   els.urlInput.focus();
   // The Chrome extension opens this page as app.html?album=<url> from a Bunkr tab.

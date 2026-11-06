@@ -7,7 +7,7 @@ import { fetchAlbumPreview, fetchAlbumMeta } from '../src/parser.js';
 import { runDownload } from '../src/downloader.js';
 import { analyzeAlbumFiles, albumOutputPath, findAlbumFolder } from '../src/local-index.js';
 import { setNetworkOptions } from '../src/net.js';
-import { checkDiskSpace } from '../src/disk.js';
+import { checkDiskSpace, diskInfo } from '../src/disk.js';
 import { randomCipherToken } from '../src/name-cipher.js';
 import { searchAlbums } from '../src/search.js';
 import * as store from './store.js';
@@ -320,6 +320,15 @@ ipcMain.handle('settings:set', async (_event, partial) => {
 
 ipcMain.handle('cipher:random', async (_event, source) => {
   return { ok: true, token: randomCipherToken(String(source || '')) };
+});
+
+// Free space per download folder, so the queue can warn before a download runs out of room.
+ipcMain.handle('disk:info', async (_event, dirs) => {
+  try {
+    return { ok: true, info: await diskInfo(Array.isArray(dirs) ? dirs : []) };
+  } catch (e) {
+    return { ok: false, error: e.message, info: {} };
+  }
 });
 
 ipcMain.handle('queue:list', async () => {

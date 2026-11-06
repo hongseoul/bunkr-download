@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('api', {
   randomCipherToken: (source) => ipcRenderer.invoke('cipher:random', source),
   listQueue: () => ipcRenderer.invoke('queue:list'),
   saveQueue: (items) => ipcRenderer.invoke('queue:save', items),
+  /** Free space per folder: { [dir]: { free, volume, label } | null }. */
+  diskInfo: (dirs) => ipcRenderer.invoke('disk:info', dirs),
   platform: process.platform,
   setWindowTheme: (theme) => ipcRenderer.invoke('window:theme', theme),
   readClipboard: () => ipcRenderer.invoke('clipboard:readText'),

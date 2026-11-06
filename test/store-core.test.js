@@ -104,3 +104,18 @@ test('queue: junk is dropped, statuses are reset to a known set, ids are kept or
   assert.equal(items[1].status, 'done');
   assert.deepEqual(items[1].selectedFiles, ['a', 'b']);
 });
+
+test('queue: album size survives a save, junk sizes become zero', () => {
+  const [sized, junk, old] = sanitizeQueueItems([
+    { url: 'https://bunkr.cr/a/x', sizeBytes: 12345, sizeMissing: '2', sized: true },
+    { url: 'https://bunkr.cr/a/y', sizeBytes: 'lots', sizeMissing: -4, sized: 1 },
+    { url: 'https://bunkr.cr/a/z' },
+  ], stamp());
+  assert.equal(sized.sizeBytes, 12345);
+  assert.equal(sized.sizeMissing, 2);
+  assert.equal(sized.sized, true);
+  assert.equal(junk.sizeBytes, 0);
+  assert.equal(junk.sizeMissing, 0);
+  assert.equal(junk.sized, true);
+  assert.equal(old.sized, false);
+});

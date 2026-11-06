@@ -410,38 +410,37 @@
                 </div>
               </header>
 
-              <div class="panel-grid">
-                <form id="queueForm" class="panel">
-                  <label class="field-label" for="queueUrls">Add albums</label>
-                  <textarea
-                    id="queueUrls"
-                    rows="4"
-                    placeholder="Paste album URLs, one per line&#10;https://bunkr.cr/a/album-id-1&#10;https://bunkr.cr/a/album-id-2"
-                    spellcheck="false"
-                  ></textarea>
+              <form id="queueForm" class="panel">
+                <label class="field-label" for="queueUrls">Add albums</label>
+                <textarea
+                  id="queueUrls"
+                  rows="4"
+                  placeholder="Paste album URLs, one per line&#10;https://bunkr.cr/a/album-id-1&#10;https://bunkr.cr/a/album-id-2"
+                  spellcheck="false"
+                ></textarea>
+                <div class="queue-form-foot">
+                  <button id="queueBrowseBtn" class="path-chip" type="button">
+                    <svg class="i"><use href="#i-folder" /></svg>
+                    <span class="path-chip-text">
+                      <span class="path-chip-label">Save to</span>
+                      <span id="queueOutputDir" class="path-chip-value empty">Choose a folder…</span>
+                    </span>
+                  </button>
                   <div class="panel-actions">
                     <button type="submit" class="btn btn-sm"><svg class="i"><use href="#i-plus" /></svg>Add to queue</button>
                     <button type="button" id="queueAddStartBtn" class="btn btn-sm btn-accent">Add &amp; start</button>
                   </div>
-                </form>
-
-                <div class="panel">
-                  <label class="field-label" for="queueOutputDir">Folder for all albums</label>
-                  <div class="path-field">
-                    <svg class="i"><use href="#i-folder" /></svg>
-                    <input id="queueOutputDir" type="text" placeholder="Pick a folder…" readonly title="Default save location for queued albums that do not have their own folder" />
-                  </div>
-                  <p class="field-help">Albums without their own folder save here. Falls back to the album view’s folder.</p>
-                  <div class="panel-actions">
-                    <button id="queueBrowseBtn" type="button" class="btn btn-sm" title="Pick the default folder for every album in the queue">Browse…</button>
-                    <button id="queueApplyFolderBtn" type="button" class="btn btn-ghost btn-sm" title="Clear per-album folders so every queued album uses the folder above">
-                      Use for all queued
-                    </button>
-                  </div>
                 </div>
-              </div>
+              </form>
 
-              <div id="queueHint" class="hint-line"></div>
+              <div id="queueSpace" class="queue-space" hidden></div>
+
+              <div class="queue-listbar">
+                <div id="queueHint" class="hint-line"></div>
+                <button id="queueMoveAllBtn" type="button" class="btn btn-ghost btn-sm" hidden title="Pick one folder for every album that has not downloaded yet">
+                  <svg class="i"><use href="#i-folder" /></svg>Change folder for all waiting…
+                </button>
+              </div>
               <div id="queueList" class="list"></div>
             </div>
           </div>
